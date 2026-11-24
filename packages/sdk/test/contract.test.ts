@@ -1,5 +1,6 @@
 import {
   Account,
+  Address,
   BASE_FEE,
   Keypair,
   Operation,
@@ -7,10 +8,18 @@ import {
   TransactionBuilder,
   nativeToScVal,
   rpc,
+  scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ContractCallError, PlimsollContracts, TESTNET, Tier } from "../src/index";
+import {
+  ContractCallError,
+  PlimsollContracts,
+  Role,
+  TESTNET,
+  Tier,
+  assertReporterName,
+} from "../src/index";
 
 // Every RPC method the client uses is stubbed on its own `server`, so nothing
 // here touches the network. The RPC URL points at a closed local port as a
@@ -60,6 +69,21 @@ function signedXdr(): string {
     .build();
   tx.sign(signer);
   return tx.toXDR();
+}
+
+type Invocation = {
+  func: {
+    invokeContract: {
+      contractAddress: xdr.ScAddress;
+      functionName: xdr.ScSymbol;
+      args: xdr.ScVal[];
+    };
+  };
+};
+
+function invocationOf(prepared: string): Invocation {
+  const tx = TransactionBuilder.fromXDR(prepared, config.networkPassphrase) as Transaction;
+  return (tx.operations[0] as unknown as Invocation).func.invokeContract;
 }
 
 afterEach(() => {
@@ -143,6 +167,20 @@ describe("PlimsollContracts reads", () => {
     expect(err).toMatchObject({ method: "coverage", detail: "HostError: Error(Contract, #3)" });
     expect(String(err)).toContain("Error(Contract, #3)");
   });
+
+  it("reads both admin addresses", async () => {
+    const client = new PlimsollContracts(config);
+    const admin = Keypair.random().publicKey();
+    const retval = new Address(admin).toScVal();
+    const simulate = vi
+      .spyOn(client.server, "simulateTransaction")
+      .mockResolvedValueOnce(simSuccess(retval))
+      .mockResolvedValueOnce(simSuccess(retval));
+
+    await expect(client.registryAdmin()).resolves.toBe(admin);
+    await expect(client.ledgerAdmin()).resolves.toBe(admin);
+    expect(simulate).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("PlimsollContracts writes", () => {
@@ -161,6 +199,54 @@ describe("PlimsollContracts writes", () => {
     expect(tx).toBeInstanceOf(Transaction);
     expect((tx as Transaction).source).toBe(source);
     expect((tx as Transaction).sequence).toBe("42");
+  });
+
+  it("encodes set_reporter with the admin as source", async () => {
+    const client = new PlimsollContracts(config);
+    const admin = Keypair.random().publicKey();
+    const reporter = Keypair.random().publicKey();
+    vi.spyOn(client.server, "getAccount").mockResolvedValue(new Account(admin, "1"));
+    vi.spyOn(client.server, "prepareTransaction").mockImplementation(async (tx) => tx as never);
+
+    const out = await client.prepareSetReporter(admin, reporter, Role.Auditor, "Acme Audit LLP");
+    const call = invocationOf(out);
+    expect(Address.fromScAddress(call.contractAddress).toString()).toBe(config.reporterRegistryId);
+    expect(String(call.functionName)).toBe("set_reporter");
+    expect(call.args).toHaveLength(3);
+    expect(scValToNative(call.args[0]!)).toBe(reporter);
+    expect(scValToNative(call.args[1]!)).toBe(Role.Auditor);
+    expect(scValToNative(call.args[2]!)).toBe("Acme Audit LLP");
+    const tx = TransactionBuilder.fromXDR(out, config.networkPassphrase) as Transaction;
+    expect(tx.source).toBe(admin);
+  });
+
+  it("encodes revoke with the reporter address", async () => {
+    const client = new PlimsollContracts(config);
+    const admin = Keypair.random().publicKey();
+    const reporter = Keypair.random().publicKey();
+    vi.spyOn(client.server, "getAccount").mockResolvedValue(new Account(admin, "1"));
+    vi.spyOn(client.server, "prepareTransaction").mockImplementation(async (tx) => tx as never);
+
+    const out = await client.prepareRevoke(admin, reporter);
+    const call = invocationOf(out);
+    expect(String(call.functionName)).toBe("revoke");
+    expect(call.args).toHaveLength(1);
+    expect(scValToNative(call.args[0]!)).toBe(reporter);
+  });
+
+  it("validates names by UTF-8 byte length before preparing", async () => {
+    const client = new PlimsollContracts(config);
+    const admin = Keypair.random().publicKey();
+    const reporter = Keypair.random().publicKey();
+    const getAccount = vi.spyOn(client.server, "getAccount");
+
+    for (const name of ["", "a".repeat(65), "é".repeat(33)]) {
+      await expect(
+        client.prepareSetReporter(admin, reporter, Role.Transcriber, name),
+      ).rejects.toThrow(/64 bytes/);
+    }
+    expect(() => assertReporterName("é".repeat(32))).not.toThrow();
+    expect(getAccount).not.toHaveBeenCalled();
   });
 
   it("wraps a prepare failure in ContractCallError", async () => {

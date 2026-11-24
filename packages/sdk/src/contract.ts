@@ -13,7 +13,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { Buffer } from "buffer";
-import { parseContractErrorCode } from "./errors";
+import { RegistryError, describeError, parseContractErrorCode } from "./errors";
 import type {
   AssetRecord,
   Coverage,
@@ -72,6 +72,15 @@ export const u32 = (n: number) => nativeToScVal(n, { type: "u32" });
 export const u64 = (n: number | bigint) => nativeToScVal(BigInt(n), { type: "u64" });
 export const i128 = (n: bigint) => nativeToScVal(n, { type: "i128" });
 const str = (s: string) => nativeToScVal(s, { type: "string" });
+
+export function assertReporterName(name: string): void {
+  const bytes = new TextEncoder().encode(name).length;
+  if (bytes < 1 || bytes > 64) {
+    throw new Error(
+      describeError(RegistryError.InvalidName, "registry") ?? "Invalid reporter name",
+    );
+  }
+}
 
 /** 64-char hex → BytesN<32>. */
 export function bytes32(hex: string): xdr.ScVal {
@@ -260,6 +269,14 @@ export class PlimsollContracts extends ContractClient {
     return opt(await this.read(this.registry, "get_reporter", [addr(address)]), decodeReporter);
   }
 
+  async registryAdmin(): Promise<string> {
+    return String(await this.read(this.registry, "admin", []));
+  }
+
+  async ledgerAdmin(): Promise<string> {
+    return String(await this.read(this.ledger, "admin", []));
+  }
+
   // -- writes: return prepared, unsigned transaction XDR --
 
   /** List a classic asset by SAC address. Anyone may call it. */
@@ -296,6 +313,25 @@ export class PlimsollContracts extends ContractClient {
       ),
       opts,
     );
+  }
+
+  async prepareSetReporter(
+    admin: string,
+    reporter: string,
+    role: Role,
+    name: string,
+    opts?: PrepareOptions,
+  ): Promise<string> {
+    assertReporterName(name);
+    return this.prepare(
+      admin,
+      this.registry.call("set_reporter", addr(reporter), u32(role), str(name)),
+      opts,
+    );
+  }
+
+  async prepareRevoke(admin: string, reporter: string, opts?: PrepareOptions): Promise<string> {
+    return this.prepare(admin, this.registry.call("revoke", addr(reporter)), opts);
   }
 
   /** Submit a signed transaction and wait for it to land. Returns the hash. */

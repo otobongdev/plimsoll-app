@@ -55,6 +55,8 @@ export type CoverageStatus = "covered" | "under" | "stale" | "unknown";
  */
 export const DEFAULT_MAX_AGE_SECONDS = 7 * 24 * 3600;
 
+export const DEFAULT_MIN_BPS = 10_000;
+
 /** How old the two halves of a coverage reading are, in seconds. */
 export interface CoverageAges {
   /** The reserve report the ratio was computed against. */
@@ -80,11 +82,12 @@ export function coverageStatus(
   bps: number | null | undefined,
   ages: CoverageAges,
   maxAgeSeconds: number = DEFAULT_MAX_AGE_SECONDS,
+  minBps: number = DEFAULT_MIN_BPS,
 ): CoverageStatus {
   if (bps == null || ages.report == null) return "unknown";
   if (ages.report > maxAgeSeconds) return "stale";
   if (ages.supply != null && ages.supply > maxAgeSeconds) return "stale";
-  return bps >= 10_000 ? "covered" : "under";
+  return bps >= minBps ? "covered" : "under";
 }
 
 export function tierLabel(tier: Tier): string {

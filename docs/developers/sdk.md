@@ -33,9 +33,13 @@ formatUnits(cov!.reserves);    // "1,020,000"
 | `coverage(sac, minTier)` | `Coverage \| null` |
 | `isCovered(sac, minBps, maxAgeSeconds, minTier)` | `boolean` |
 | `getReporter(address)` | `ReporterInfo \| null` |
+| `registryAdmin()` | the registry's admin address |
+| `ledgerAdmin()` | the coverage ledger's admin address |
 | `prepareListAsset(source, sac)` | unsigned XDR |
 | `prepareDeploySac(source, code, issuer)` | unsigned XDR |
 | `preparePostReserve({ reporter, sac, amount, asOf, docHash, docUri })` | unsigned XDR |
+| `prepareSetReporter(admin, reporter, role, name)` | unsigned XDR; `name` must be 1–64 UTF-8 bytes |
+| `prepareRevoke(admin, reporter)` | unsigned XDR |
 | `submit(signedXdr)` | transaction hash, after it succeeds |
 
 A failed simulation throws `ContractCallError`. For contract errors its `code`
@@ -83,6 +87,26 @@ const { signedTxXdr } = await signTransaction(xdr, {
 const hash = await plimsoll.submit(signedTxXdr);
 ```
 
+### Managing reporters
+
+Only the registry admin can set or revoke a reporter. Pass the admin address as
+the transaction source and have that account sign the prepared XDR. Names are
+checked locally to match the contract: 1 to 64 UTF-8 bytes.
+
+```ts
+import { Role } from "@plimsoll/sdk";
+
+const admin = await plimsoll.registryAdmin();
+const xdr = await plimsoll.prepareSetReporter(admin, reporter, Role.Auditor, "Acme Audit LLP");
+const { signedTxXdr } = await signTransaction(xdr, {
+  networkPassphrase: TESTNET.networkPassphrase,
+  address: admin,
+});
+const hash = await plimsoll.submit(signedTxXdr);
+
+const revokeXdr = await plimsoll.prepareRevoke(admin, reporter);
+```
+
 ### `IndexerClient`
 
 | Method | Endpoint |
@@ -102,9 +126,22 @@ const hash = await plimsoll.submit(signedTxXdr);
 | `formatUnits(10200000000000n)` | `"1,020,000"` |
 | `parseUnits("1.5")` | `15000000n` |
 | `bpsToPercent(9990)` | `"99.90%"` |
-| `coverageStatus(bps, ageSeconds)` | `"covered" \| "under" \| "stale" \| "unknown"` |
+| `coverageStatus(bps, ages, maxAgeSeconds?, minBps?)` | `"covered" \| "under" \| "stale" \| "unknown"` |
+| `DEFAULT_MAX_AGE_SECONDS` | freshness default, 7 days |
+| `DEFAULT_MIN_BPS` | ratio default, 10,000 (100%) |
 | `sacAddress(code, issuer, passphrase)` | the asset's SAC address |
 | `sha256Hex(bytes)` / `matchesHash(bytes, hex)` | document checks |
+
+`coverageStatus` defaults `maxAgeSeconds` to `DEFAULT_MAX_AGE_SECONDS` and
+`minBps` to `DEFAULT_MIN_BPS` (100%), so its default behaviour is unchanged. A
+consumer that requires 102% can pass `10_200`; one that accepts 98% can pass
+`9_800`. `unknown` means a report or ratio is missing; `stale` means the report
+or supply snapshot is older than the window, whatever the ratio.
+
+```ts
+coverageStatus(10_100, { report: 60 }, DEFAULT_MAX_AGE_SECONDS, 10_200); // "under"
+coverageStatus(9_900, { report: 60 }, DEFAULT_MAX_AGE_SECONDS, 9_800); // "covered"
+```
 
 ## Tests
 

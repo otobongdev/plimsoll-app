@@ -240,6 +240,34 @@ export class IndexerClient {
     });
   }
 
+  async batchCoverageStatus(
+    sacs: string[],
+    options: { maxAgeSeconds?: number } = {},
+  ): Promise<Map<string, "covered" | "under" | "stale" | "unknown">> {
+    const maxAge = options.maxAgeSeconds ?? 7 * 24 * 3600;
+    const results = await Promise.allSettled(sacs.map((sac) => this.getAsset(sac)));
+    const map = new Map<string, "covered" | "under" | "stale" | "unknown">();
+    for (let i = 0; i < sacs.length; i++) {
+      const sac = sacs[i]!;
+      const result = results[i]!;
+      if (result.status === "rejected") {
+        map.set(sac, "unknown");
+        continue;
+      }
+      const cov = result.value.coverage;
+      if (!cov || cov.bps === null) {
+        map.set(sac, "unknown");
+        continue;
+      }
+      if (cov.report_age_seconds > maxAge || cov.supply_age_seconds > maxAge) {
+        map.set(sac, "stale");
+        continue;
+      }
+      map.set(sac, cov.bps >= 10_000 ? "covered" : "under");
+    }
+    return map;
+  }
+
   private post<T>(path: string, body: unknown, opts?: RequestOptions): Promise<T> {
     return this.request(opts, async (init) => {
       const res = await this.fetchImpl(`${this.base}${path}`, {

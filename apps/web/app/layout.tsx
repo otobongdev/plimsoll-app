@@ -3,13 +3,10 @@ import { Footer, Header } from "@/components/SiteChrome";
 import { config } from "@/lib/config";
 import { buildCsp } from "@/lib/csp";
 import { MAINNET_HORIZON } from "@/lib/mainnet";
+import { siteMetadata } from "@/lib/metadata";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "Plimsoll — is it backed?", template: "%s · Plimsoll" },
-  description:
-    "Reserve coverage for Stellar-issued assets: circulating supply from the ledger, signed reserve reports on-chain, and an is_covered() check any contract can call.",
-};
+export const metadata: Metadata = siteMetadata();
 
 export const viewport: Viewport = {
   width: "device-width",

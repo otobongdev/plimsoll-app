@@ -528,6 +528,18 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+button.copy-trigger {
+  padding: 2px 7px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 .notice {
   border-radius: var(--radius);
@@ -835,4 +847,24 @@ th button.sort-btn:focus-visible {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Print utilities */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Hide global chrome when printing */
+  body > header,
+  body > footer,
+  nav {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 11pt;
+  }
 }

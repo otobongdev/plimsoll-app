@@ -48,6 +48,20 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
+      - name: Check robots, sitemap and social image are exported
+        run: |
+          base="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          for path in robots.txt sitemap.xml og.png; do
+            for i in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' "$base/$path")
+              [ "$code" = 200 ] && break
+              sleep 10
+            done
+            echo "$code $base/$path"
+            [ "$code" = 200 ] || exit 1
+          done
+          curl -sS "$base/sitemap.xml" | grep -q "$base/"
+
       - name: Check the live site serves every page
         run: |
           base="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
@@ -61,6 +75,19 @@ jobs:
             [ "$code" = 200 ] || exit 1
             grep -q "Plimsoll" page.html || { echo "missing content"; exit 1; }
           done
+
+      - name: Check the custom 404 under the base path
+        run: |
+          base="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o missing.html -w '%{http_code}' "$base/no-such-page/")
+            [ "$code" = 404 ] && break
+            sleep 10
+          done
+          echo "$code $base/no-such-page/"
+          [ "$code" = 404 ] || exit 1
+          grep -q "Page not found" missing.html || { echo "missing custom 404"; exit 1; }
+          grep -q "href=\"$base/\"" missing.html || { echo "dashboard link lacks base path"; exit 1; }
 
       - name: Check the demo issuer's stellar.toml is readable cross-origin
         run: |

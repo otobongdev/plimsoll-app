@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import {
   NOTHING_OWED_BPS,
   bpsToPercent,
@@ -6,6 +9,71 @@ import {
   type CoverageStatus,
   Tier,
 } from "@plimsoll/sdk";
+
+export async function copyToClipboard(
+  value: string,
+  clipboard?: Pick<Clipboard, "writeText">,
+): Promise<boolean> {
+  const target = clipboard ?? (typeof navigator === "undefined" ? undefined : navigator.clipboard);
+  if (!target) return false;
+  try {
+    await target.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function copyAnnouncement(copied: boolean): string {
+  return copied ? "Copied" : "Could not copy";
+}
+
+export function CopyButton({
+  value,
+  label,
+  disabled = false,
+}: {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}) {
+  const [message, setMessage] = useState("");
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timeout.current) clearTimeout(timeout.current);
+    },
+    [],
+  );
+
+  const copy = async () => {
+    if (disabled) return;
+    setMessage("");
+    const copied = await copyToClipboard(value);
+    setMessage(copyAnnouncement(copied));
+    if (timeout.current) clearTimeout(timeout.current);
+    timeout.current = setTimeout(() => setMessage(""), 2000);
+  };
+
+  return (
+    <span className="copy-button">
+      <button
+        type="button"
+        className="secondary copy-trigger"
+        onClick={copy}
+        disabled={disabled}
+        aria-label={`Copy ${label}`}
+        title={`Copy ${label}`}
+      >
+        Copy
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {message}
+      </span>
+    </span>
+  );
+}
 
 /** The Plimsoll mark: a ring crossed by the load line. */
 export function PlimsollMark({ size = 28 }: { size?: number }) {

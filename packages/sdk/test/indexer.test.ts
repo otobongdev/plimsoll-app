@@ -117,3 +117,103 @@ describe("IndexerClient webhook methods", () => {
     });
   });
 });
+
+describe("IndexerClient batchCoverageStatus", () => {
+  const makeCoverage = (bps: number | null, reportAge: number, supplyAge: number) => ({
+    bps,
+    ratio: bps != null ? String(bps / 10000) : null,
+    tier: "issuer_signed" as const,
+    supply: "1000000",
+    reserves: "1000000",
+    supply_ledger: 100,
+    supply_posted_at: new Date().toISOString(),
+    report_as_of: new Date().toISOString(),
+    report_age_seconds: reportAge,
+    supply_age_seconds: supplyAge,
+    reporter: "GABC",
+    doc_uri: "https://example.com",
+  });
+
+  const makeAsset = (sac: string, bps: number | null, reportAge = 60, supplyAge = 60) => ({
+    sac,
+    code: "TEST",
+    issuer: "GABC",
+    listed_ledger: 1,
+    listed_at: new Date().toISOString(),
+    toml: null,
+    supply: null,
+    reports: {},
+    coverage: makeCoverage(bps, reportAge, supplyAge),
+  });
+
+  it("returns covered for bps >= 10000 and fresh ages", async () => {
+    const f = vi.fn(async () => json(makeAsset("CAAA", 10_000)));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("covered");
+  });
+
+  it("returns under for bps < 10000 and fresh ages", async () => {
+    const f = vi.fn(async () => json(makeAsset("CAAA", 9_999)));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("under");
+  });
+
+  it("returns stale when report age exceeds maxAgeSeconds", async () => {
+    const week = 7 * 24 * 3600;
+    const f = vi.fn(async () => json(makeAsset("CAAA", 10_000, week + 1, 60)));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("stale");
+  });
+
+  it("returns stale when supply age exceeds maxAgeSeconds", async () => {
+    const week = 7 * 24 * 3600;
+    const f = vi.fn(async () => json(makeAsset("CAAA", 10_000, 60, week + 1)));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("stale");
+  });
+
+  it("returns unknown on fetch failure", async () => {
+    const f = vi.fn(async () => json({ error: "not found" }, 404));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("unknown");
+  });
+
+  it("returns unknown when coverage is null", async () => {
+    const asset = { ...makeAsset("CAAA", 10_000), coverage: null };
+    const f = vi.fn(async () => json(asset));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA"]);
+    expect(result.get("CAAA")).toBe("unknown");
+  });
+
+  it("fans out to individual getAsset calls and returns a map", async () => {
+    let callCount = 0;
+    const f = vi.fn(async (url: unknown) => {
+      callCount++;
+      const sac = String(url).split("/").pop()?.split("?")[0] ?? "";
+      return json(makeAsset(sac, callCount === 1 ? 10_000 : 9_999));
+    });
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const result = await c.batchCoverageStatus(["CAAA", "CBBB"]);
+    expect(result.size).toBe(2);
+    expect(result.has("CAAA")).toBe(true);
+    expect(result.has("CBBB")).toBe(true);
+  });
+
+  it("respects custom maxAgeSeconds", async () => {
+    const tenDays = 10 * 24 * 3600;
+    const f = vi.fn(async () => json(makeAsset("CAAA", 10_000, tenDays - 1, 60)));
+    const c = new IndexerClient("http://x", f as unknown as typeof fetch);
+    const strictResult = await c.batchCoverageStatus(["CAAA"]);
+    expect(strictResult.get("CAAA")).toBe("stale");
+    const laxResult = await c.batchCoverageStatus(["CAAA"], {
+      maxAgeSeconds: tenDays,
+    });
+    expect(laxResult.get("CAAA")).toBe("covered");
+  });
+});

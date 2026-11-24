@@ -8,8 +8,10 @@ import {
   describeError,
   formatUnits,
   sha256Hex,
+  shortAddress,
   tierLabel,
 } from "@plimsoll/sdk";
+import { CopyButton } from "@/components/ui";
 import { explorer } from "@/lib/config";
 import { contracts, loadAssets, type AssetView } from "@/lib/data";
 import { checkAmount } from "@/lib/report-preview";
@@ -141,7 +143,8 @@ export default function ReportPage() {
         {address ? (
           <div className="spread">
             <span>
-              Connected as <code className="break">{address}</code>
+              Connected as <code className="break">{address}</code>{" "}
+              <CopyButton value={address} label="connected address" />
             </span>
             <span>
               {tier === undefined ? (
@@ -171,6 +174,10 @@ export default function ReportPage() {
             ))}
           </select>
         </label>
+        <div className="sub" style={{ marginTop: -4 }}>
+          Asset contract <span className="mono">{shortAddress(sac, 6)}</span>{" "}
+          <CopyButton value={sac} label="asset contract id" disabled={!sac} />
+        </div>
         <label>
           Reserves held
           <span className="hint">In units of the asset, up to 7 decimals. Example: 1,020,000</span>
@@ -258,6 +265,16 @@ export default function ReportPage() {
               required
             />
           </label>
+          <div className="sub" style={{ marginTop: 6 }}>
+            {docHash ? (
+              <>
+                Current hash <span className="mono">{shortAddress(docHash, 8)}</span>{" "}
+              </>
+            ) : (
+              <>No hash yet. </>
+            )}
+            <CopyButton value={docHash} label="document hash" disabled={!docHash} />
+          </div>
           <div className="row" style={{ marginTop: 8 }}>
             <input
               type="file"
@@ -286,7 +303,8 @@ export default function ReportPage() {
             <a href={explorer.tx(status.hash)} target="_blank" rel="noreferrer">
               View transaction
             </a>
-            . The dashboard updates once the indexer picks up the event.
+            . <CopyButton value={status.hash} label="transaction hash" /> The dashboard updates once
+            the indexer picks up the event.
           </p>
         ) : null}
       </div>

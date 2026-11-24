@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./format";
 export * from "./contract";
 export * from "./errors";
+export * from "./events";
 export * from "./vault";
 export * from "./indexer";
 export * from "./verify";

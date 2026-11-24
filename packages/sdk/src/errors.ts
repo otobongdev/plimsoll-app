@@ -28,6 +28,28 @@ export enum VaultError {
 
 export type ContractName = "ledger" | "registry" | "vault";
 
+/**
+ * Unified namespace for all Plimsoll contract error enums.
+ *
+ * Each property groups the error codes for one contract:
+ * - `PlimsollError.Ledger`   — coverage-ledger contract (`LedgerError`)
+ * - `PlimsollError.Registry` — reporter-registry contract (`RegistryError`)
+ * - `PlimsollError.Vault`    — covered-vault contract (`VaultError`)
+ *
+ * The numeric values match the Rust contract error enums and are append-only.
+ *
+ * @example
+ * ```ts
+ * import { PlimsollError } from "@plimsoll/sdk";
+ * if (code === PlimsollError.Ledger.AssetNotListed) { … }
+ * ```
+ */
+export const PlimsollError = {
+  Ledger: LedgerError,
+  Registry: RegistryError,
+  Vault: VaultError,
+} as const;
+
 const MESSAGES: Record<ContractName, Record<number, string>> = {
   ledger: {
     [LedgerError.NotAStellarAsset]: "That address is not a Stellar Asset Contract.",

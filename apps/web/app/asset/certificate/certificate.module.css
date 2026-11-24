@@ -1,0 +1,161 @@
+/* Certificate page — screen and print styles */
+
+.certificate {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: inherit;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--brand);
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.brandName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--fg-sub);
+  margin: 0;
+}
+
+.section {
+  margin-bottom: 1.75rem;
+}
+
+.sectionHeading {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-sub);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dl {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.dlRow {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  font-size: 0.9rem;
+}
+
+.dlRow dt {
+  color: var(--fg-sub);
+  font-weight: 500;
+}
+
+.dlRow dd {
+  margin: 0;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+.bigRatio {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--fg-sub);
+  text-align: center;
+}
+
+.disclaimer {
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* ------------------------------------------------------------------ Print */
+
+@media print {
+  /* Hide non-print UI elements */
+  .no-print {
+    display: none !important;
+  }
+
+  .certificate {
+    border: none;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    background: transparent;
+  }
+
+  .header {
+    border-bottom-color: #000;
+  }
+
+  .brandName {
+    color: #000;
+  }
+
+  .title {
+    font-size: 18pt;
+  }
+
+  .dlRow {
+    grid-template-columns: 180px 1fr;
+    font-size: 10pt;
+  }
+
+  .bigRatio {
+    font-size: 20pt;
+  }
+
+  .sectionHeading {
+    border-bottom-color: #000;
+    color: #444;
+  }
+
+  .footer {
+    border-top-color: #000;
+    color: #444;
+  }
+
+  /* Avoid page breaks inside a section */
+  .section {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: none;
+  }
+}

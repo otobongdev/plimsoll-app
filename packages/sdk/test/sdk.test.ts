@@ -3,6 +3,7 @@ import { scValToNative } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MAX_AGE_SECONDS,
+  DEFAULT_MIN_BPS,
   IndexerClient,
   IndexerError,
   NOTHING_OWED_BPS,
@@ -51,11 +52,26 @@ describe("format", () => {
   });
 
   it("classifies status", () => {
-    expect(coverageStatus(10_000, { report: 60 })).toBe("covered");
-    expect(coverageStatus(9_999, { report: 60 })).toBe("under");
+    expect(DEFAULT_MIN_BPS).toBe(10_000);
+    expect(coverageStatus(DEFAULT_MIN_BPS, { report: 60 })).toBe("covered");
+    expect(coverageStatus(DEFAULT_MIN_BPS - 1, { report: 60 })).toBe("under");
     expect(coverageStatus(10_500, { report: 40 * 86_400 })).toBe("stale");
     expect(coverageStatus(null, { report: 60 })).toBe("unknown");
     expect(coverageStatus(10_500, { report: null })).toBe("unknown");
+  });
+
+  it("classifies against a caller-chosen threshold", () => {
+    const ages = { report: 60 };
+
+    expect(coverageStatus(10_000, ages)).toBe("covered");
+    expect(coverageStatus(10_000, ages, DEFAULT_MAX_AGE_SECONDS, 10_200)).toBe("under");
+    expect(coverageStatus(10_200, ages, DEFAULT_MAX_AGE_SECONDS, 10_200)).toBe("covered");
+
+    expect(coverageStatus(10_000, ages, DEFAULT_MAX_AGE_SECONDS, 9_800)).toBe("covered");
+    expect(coverageStatus(9_799, ages, DEFAULT_MAX_AGE_SECONDS, 9_800)).toBe("under");
+
+    expect(coverageStatus(10_200, { report: 10 * 86_400 })).toBe("stale");
+    expect(coverageStatus(10_200, { report: 10 * 86_400 }, 31 * 86_400, 10_200)).toBe("covered");
   });
 
   // The demo's PUSD vault asks for a report at most 7 days old. A page that
