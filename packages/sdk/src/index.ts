@@ -7,3 +7,4 @@ export * from "./indexer";
 export * from "./verify";
 export { TESTNET } from "./networks";
 export * from "./horizon";
+export * from "./cache";
