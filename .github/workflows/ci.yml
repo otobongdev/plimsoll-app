@@ -43,6 +43,31 @@ jobs:
       - name: Build web
         run: npm run build -w @plimsoll/web
 
+  visual:
+    name: visual regression
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Build SDK
+        run: npm run build -w @plimsoll/sdk
+      - name: Run visual regression tests
+        run: npm run test:visual
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   live:
     name: live testnet
     if: github.event_name != 'pull_request'
