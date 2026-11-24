@@ -154,6 +154,23 @@ p {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 2px solid var(--sea);
+  border-radius: var(--radius);
+  color: var(--sea);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 8px;
+}
 @media (max-width: 760px) {
   .site-header .wrap {
     gap: 12px;
@@ -189,6 +206,7 @@ p {
 
 main {
   padding: 32px 0 64px;
+  outline: none;
 }
 .site-footer {
   border-top: 1px solid var(--line);
@@ -482,7 +500,9 @@ input:focus,
 select:focus,
 textarea:focus,
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--sea);
   outline-offset: 2px;
 }

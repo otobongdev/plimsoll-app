@@ -135,7 +135,10 @@ function AssetDetail() {
   return (
     <>
       <p className="sub">
-        <Link href="/">All assets</Link> / {asset.code}
+        <Link href="/">All assets</Link> / {asset.code}{" "}
+        <Link href={`/asset/history/?sac=${asset.sac}`} style={{ marginLeft: 8 }}>
+          History
+        </Link>
       </p>
       <div className="spread">
         <div>

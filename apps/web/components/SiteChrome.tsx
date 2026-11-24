@@ -14,6 +14,7 @@ const NAV = [
   { href: "/list/", label: "List an asset" },
   { href: "/integrate/", label: "Integrate" },
   { href: "/about/", label: "How it works" },
+  { href: "/settings/", label: "Alert settings" },
 ];
 
 const DOCS_URL = "https://plimsoll-protocol.gitbook.io/plimsoll-protocol-docs/";

@@ -38,8 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>{csp ? <meta httpEquiv="Content-Security-Policy" content={csp} /> : null}</head>
       <body>
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <Header />
-        <main>
+        <main id="main-content" tabIndex={-1}>
           <div className="wrap">{children}</div>
         </main>
         <Footer />

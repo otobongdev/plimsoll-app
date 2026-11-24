@@ -121,6 +121,20 @@ export interface IndexerHealth {
   [key: string]: unknown;
 }
 
+export interface IndexerWebhook {
+  id: string;
+  url: string;
+  threshold_bps: number;
+  sac: string | null;
+  created_at: string;
+}
+
+export interface RegisterWebhookParams {
+  url: string;
+  threshold_bps: number;
+  sac?: string;
+}
+
 /** Thrown when a request is aborted by the caller or by a timeout. */
 export class IndexerAbortError extends Error {
   constructor(
@@ -182,6 +196,38 @@ export class IndexerClient {
     return this.get(`/healthz`, opts);
   }
 
+  async registerWebhook(
+    params: RegisterWebhookParams,
+    opts?: RequestOptions,
+  ): Promise<IndexerWebhook> {
+    return this.post<IndexerWebhook>("/v1/webhooks", params, opts);
+  }
+
+  async listWebhooks(opts?: RequestOptions): Promise<IndexerWebhook[]> {
+    const body = await this.get<{ webhooks: IndexerWebhook[] }>("/v1/webhooks", opts);
+    return body.webhooks;
+  }
+
+  async deleteWebhook(id: string, opts?: RequestOptions): Promise<void> {
+    return this.request(opts, async (init) => {
+      const res = await this.fetchImpl(`${this.base}/v1/webhooks/${encodeURIComponent(id)}`, {
+        ...init,
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        let message = `${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body.error) message = body.error;
+        } catch {
+          // keep status as the message
+        }
+        throw new IndexerError(res.status, message);
+      }
+    });
+  }
+
   /** Raw breakdown bytes, exactly as hashed on-chain. */
   async breakdown(hash: string, opts?: RequestOptions): Promise<Uint8Array> {
     return this.request(opts, async (init) => {
@@ -191,6 +237,28 @@ export class IndexerClient {
       );
       if (!res.ok) throw new IndexerError(res.status, `breakdown ${hash}: ${res.status}`);
       return new Uint8Array(await res.arrayBuffer());
+    });
+  }
+
+  private post<T>(path: string, body: unknown, opts?: RequestOptions): Promise<T> {
+    return this.request(opts, async (init) => {
+      const res = await this.fetchImpl(`${this.base}${path}`, {
+        ...init,
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let message = `${res.status}`;
+        try {
+          const errBody = (await res.json()) as { error?: string };
+          if (errBody.error) message = errBody.error;
+        } catch {
+          // keep status as the message
+        }
+        throw new IndexerError(res.status, message);
+      }
+      return (await res.json()) as T;
     });
   }
 
