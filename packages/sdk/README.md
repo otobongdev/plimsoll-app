@@ -15,6 +15,10 @@ holds keys.
 npm install @plimsoll/sdk
 ```
 
+- Published to the public npm registry as `@plimsoll/sdk`, with
+  [npm provenance](https://docs.npmjs.com/generating-provenance-statements)
+  attesting the build to the `plimsoll-protocol/plimsoll-app` repository.
+  Pin a release with `npm install @plimsoll/sdk@0.1.0`.
 - Node 22.12 or later, or any modern browser. Hash checks use Web Crypto
   (`globalThis.crypto.subtle`).
 - ESM only: use `import`. There is no CommonJS build, so `require("@plimsoll/sdk")`

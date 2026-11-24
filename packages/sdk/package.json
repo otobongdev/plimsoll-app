@@ -14,8 +14,23 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plimsoll-protocol/plimsoll-app.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/plimsoll-protocol/plimsoll-app/tree/main/packages/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/plimsoll-protocol/plimsoll-app/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "test": "vitest run",
