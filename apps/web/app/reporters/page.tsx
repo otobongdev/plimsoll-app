@@ -1,30 +1,32 @@
 "use client";
 
 import Link from "next/link";
-<<<<<<< HEAD
-<<<<<<< HEAD
-import { useCallback, useRef, useState } from "react";
-=======
-import { useEffect, useRef, useState } from "react";
->>>>>>> pr-160
-=======
-import { useEffect, useMemo, useState } from "react";
->>>>>>> pr-184
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ago, shortAddress, type IndexerReporter } from "@plimsoll/sdk";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Skeleton, nowSecs } from "@/components/ui";
 import { EXTERNAL_REL, config, explorer } from "@/lib/config";
 import { indexer, loadReporters } from "@/lib/data";
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 import { reporterHref } from "@/lib/reporter-profile";
->>>>>>> pr-174
-import { groupReporters, updatedAt } from "@/lib/reporters";
+import {
+  DEFAULT_REPORTER_SORT,
+  REPORTER_SORTS,
+  REPORTER_SORT_LABELS,
+  activeFilterCount,
+  filterReporters,
+  groupReporters,
+  isReporterSort,
+  updatedAt,
+  type ReporterGroup,
+} from "@/lib/reporters";
+import {
+  DESKTOP_FILTER_QUERY,
+  defaultPanelOpen,
+  readPanelPreference,
+  writePanelPreference,
+} from "@/lib/filter-panel";
 import { useAutoRefresh, useRefreshIntervalSetting } from "@/lib/refresh-interval";
 import { RefreshControls } from "@/components/RefreshControls";
-import { groupReporters, updatedAt, type ReporterGroup } from "@/lib/reporters";
 
 type SortKey = "name" | "stake" | "reports" | "disputes" | "reputation" | "updated";
 type SortDir = "asc" | "desc";
@@ -34,7 +36,9 @@ function sortReporters(list: IndexerReporter[], key: SortKey, dir: SortDir): Ind
   return [...list].sort((a, b) => {
     let cmp = 0;
     if (key === "name") {
-      cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.address.localeCompare(b.address);
+      cmp =
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase()) ||
+        a.address.localeCompare(b.address);
     } else if (key === "stake") {
       cmp = Number(BigInt(a.stake ?? "0") - BigInt(b.stake ?? "0"));
     } else if (key === "reports") {
@@ -51,7 +55,7 @@ function sortReporters(list: IndexerReporter[], key: SortKey, dir: SortDir): Ind
   });
 }
 
-function formatStroke(stroops: string | undefined): string {
+function formatStake(stroops: string | undefined): string {
   if (stroops === undefined) return "—";
   const n = Number(BigInt(stroops)) / 1e7;
   return `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM`;
@@ -91,7 +95,11 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const hasExtended = group.reporters.some(
-    (r) => r.stake !== undefined || r.reports !== undefined || r.disputes !== undefined || r.reputation !== undefined,
+    (r) =>
+      r.stake !== undefined ||
+      r.reports !== undefined ||
+      r.disputes !== undefined ||
+      r.reputation !== undefined,
   );
 
   const handleSort = (key: SortKey) => {
@@ -109,7 +117,8 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
     <div className="table-wrap">
       <table>
         <caption className="sr-only">
-          Registered {group.heading.toLowerCase()}, with their Stellar account and the last update to their entry
+          Registered {group.heading.toLowerCase()}, with their Stellar account and the last update
+          to their entry
         </caption>
         <thead>
           <tr>
@@ -117,13 +126,43 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
             <th scope="col">Address</th>
             {hasExtended ? (
               <>
-                <SortTh col="stake" label="Stake" current={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortTh col="reports" label="Reports" current={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortTh col="disputes" label="Disputes" current={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortTh col="reputation" label="Reputation" current={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortTh
+                  col="stake"
+                  label="Stake"
+                  current={sortKey}
+                  dir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortTh
+                  col="reports"
+                  label="Reports"
+                  current={sortKey}
+                  dir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortTh
+                  col="disputes"
+                  label="Disputes"
+                  current={sortKey}
+                  dir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortTh
+                  col="reputation"
+                  label="Reputation"
+                  current={sortKey}
+                  dir={sortDir}
+                  onSort={handleSort}
+                />
               </>
             ) : null}
-            <SortTh col="updated" label="Last update" current={sortKey} dir={sortDir} onSort={handleSort} />
+            <SortTh
+              col="updated"
+              label="Last update"
+              current={sortKey}
+              dir={sortDir}
+              onSort={handleSort}
+            />
           </tr>
         </thead>
         <tbody>
@@ -131,13 +170,17 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
             const at = updatedAt(reporter.updated_at);
             return (
               <tr key={reporter.address}>
-                <td>{reporter.name || "—"}</td>
+                <td>
+                  <Link href={reporterHref(reporter.address)}>
+                    {reporter.name || shortAddress(reporter.address, 6)}
+                  </Link>
+                </td>
                 <td>
                   <a
                     className="mono"
                     href={explorer.account(reporter.address)}
                     target="_blank"
-                    rel="noreferrer"
+                    rel={EXTERNAL_REL}
                     title={reporter.address}
                   >
                     {shortAddress(reporter.address, 8)}
@@ -145,10 +188,22 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
                 </td>
                 {hasExtended ? (
                   <>
-                    <td className="num">{formatStroke(reporter.stake)}</td>
-                    <td className="num">{reporter.reports !== undefined ? reporter.reports.toLocaleString() : "—"}</td>
-                    <td className="num">{reporter.disputes !== undefined ? reporter.disputes.toLocaleString() : "—"}</td>
-                    <td className="num">{reporter.reputation !== undefined ? `${reporter.reputation}/100` : "—"}</td>
+                    <td className="num">{formatStake(reporter.stake)}</td>
+                    <td className="num">
+                      {reporter.reports !== undefined
+                        ? reporter.reports.toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="num">
+                      {reporter.disputes !== undefined
+                        ? reporter.disputes.toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="num">
+                      {reporter.reputation !== undefined
+                        ? `${reporter.reputation}/100`
+                        : "—"}
+                    </td>
                   </>
                 ) : null}
                 <td className="num">
@@ -168,51 +223,15 @@ function ReporterTable({ group, now }: { group: ReporterGroup; now: number }) {
     </div>
   );
 }
-=======
-import {
-  DEFAULT_REPORTER_SORT,
-  REPORTER_SORTS,
-  REPORTER_SORT_LABELS,
-  activeFilterCount,
-  filterReporters,
-  groupReporters,
-  isReporterSort,
-  updatedAt,
-  type ReporterSort,
-} from "@/lib/reporters";
-import {
-  DESKTOP_FILTER_QUERY,
-  defaultPanelOpen,
-  readPanelPreference,
-  writePanelPreference,
-} from "@/lib/filter-panel";
->>>>>>> pr-160
-=======
-import {
-  REPUTATION_TOOLTIP,
-  groupReporters,
-  reputationOf,
-  reputationText,
-  sortReporters,
-  updatedAt,
-  type ReporterSort,
-  type SortDirection,
-} from "@/lib/reporters";
->>>>>>> pr-184
 
 export default function ReportersPage() {
   const [reporters, setReporters] = useState<IndexerReporter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(nowSecs());
-<<<<<<< HEAD
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<ReporterSort>(DEFAULT_REPORTER_SORT);
+  const [sort, setSort] = useState(DEFAULT_REPORTER_SORT);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const filterToggle = useRef<HTMLButtonElement>(null);
-=======
-  const [sort, setSort] = useState<ReporterSort>("name");
-  const [direction, setDirection] = useState<SortDirection>("asc");
->>>>>>> pr-184
   const noIndexer = indexer === null;
   const [intervalValue, setIntervalValue] = useRefreshIntervalSetting();
   const cancelRef = useRef<(() => void) | null>(null);
@@ -235,12 +254,8 @@ export default function ReportersPage() {
       });
   }, []);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   const { refresh } = useAutoRefresh(fetch, intervalValue);
 
-  const groups = reporters ? groupReporters(reporters).filter((g) => g.reporters.length > 0) : [];
-=======
   // Without a stored choice, open on desktop and closed on a narrow screen.
   useEffect(() => {
     const stored = readPanelPreference(window.localStorage);
@@ -254,29 +269,18 @@ export default function ReportersPage() {
   const toggleFilters = () => {
     const next = !filtersOpen;
     setFiltersOpen(next);
-    writePanelPreference(window.localStorage, next);
+    if (typeof window !== "undefined") writePanelPreference(window.localStorage, next);
   };
 
   const closeFilters = () => {
     setFiltersOpen(false);
-    writePanelPreference(window.localStorage, false);
+    if (typeof window !== "undefined") writePanelPreference(window.localStorage, false);
     filterToggle.current?.focus();
   };
->>>>>>> pr-160
-=======
-  const groups = useMemo(() => {
-    if (!reporters) return [];
-    return groupReporters(reporters)
-      .map((group) => ({ ...group, reporters: sortReporters(group.reporters, sort, direction) }))
-      .filter((group) => group.reporters.length > 0);
-  }, [reporters, sort, direction]);
-
-  const ariaSort = (column: ReporterSort) =>
-    sort === column ? (direction === "asc" ? "ascending" : "descending") : "none";
->>>>>>> pr-184
 
   return (
     <>
+      <Breadcrumb items={[{ label: "Reporters" }]} />
       <div className="spread">
         <div>
           <div className="eyebrow">Reporter registry</div>
@@ -290,8 +294,8 @@ export default function ReportersPage() {
       </div>
       <p className="sub" style={{ maxWidth: 680 }}>
         Reserve figures carry the weight of whoever signed them. These are the auditors,
-        transcribers and supply posters registered on {config.networkName}, their reputation score
-        and when each was last updated.
+        transcribers and supply posters registered on {config.networkName}, their stake, report and
+        dispute history, and when each was last updated.
       </p>
 
       {!noIndexer ? (
@@ -407,35 +411,10 @@ export default function ReportersPage() {
         </p>
       ) : null}
 
-<<<<<<< HEAD
       {reporters && reporters.length > 0 && visible.length === 0 ? (
         <p className="notice notice-info mt">
-          No reporter matches “{query.trim()}”. Try a different name or address.
+          No reporter matches &ldquo;{query.trim()}&rdquo;. Try a different name or address.
         </p>
-=======
-      {groups.length > 0 ? (
-        <div className="spread mt" style={{ alignItems: "flex-end", gap: 12 }}>
-          <label style={{ maxWidth: 200 }}>
-            Sort by
-            <select value={sort} onChange={(e) => setSort(e.target.value as ReporterSort)}>
-              <option value="name">Name</option>
-              <option value="reputation">Reputation</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setDirection((d) => (d === "asc" ? "desc" : "asc"))}
-            aria-label={
-              direction === "asc"
-                ? `Sort ${sort === "name" ? "names" : "reputation"} descending`
-                : `Sort ${sort === "name" ? "names" : "reputation"} ascending`
-            }
-          >
-            {direction === "asc" ? "Ascending ↑" : "Descending ↓"}
-          </button>
-        </div>
->>>>>>> pr-184
       ) : null}
 
       {groups.map((group) => (
@@ -447,72 +426,7 @@ export default function ReportersPage() {
             <span className="sub">{group.reporters.length} registered</span>
           </div>
           <p className="sub">{group.description}</p>
-<<<<<<< HEAD
           <ReporterTable group={group} now={now} />
-=======
-          <div className="table-wrap">
-            <table>
-              <caption className="sr-only">
-                Registered {group.heading.toLowerCase()}, with their Stellar account, reputation
-                score and the last update to their entry
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" aria-sort={ariaSort("name")}>
-                    Name
-                  </th>
-                  <th scope="col">Address</th>
-                  <th scope="col" aria-sort={ariaSort("reputation")} title={REPUTATION_TOOLTIP}>
-                    <span title={REPUTATION_TOOLTIP}>Reputation</span>
-                    <span className="sr-only">. {REPUTATION_TOOLTIP}</span>
-                  </th>
-                  <th scope="col">Last update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {group.reporters.map((reporter) => {
-                  const at = updatedAt(reporter.updated_at);
-                  const score = reputationOf(reporter);
-                  return (
-                    <tr key={reporter.address}>
-                      <td>
-                        <Link href={reporterHref(reporter.address)}>
-                          {reporter.name || shortAddress(reporter.address, 6)}
-                        </Link>
-                      </td>
-                      <td>
-                        <a
-                          className="mono"
-                          href={explorer.account(reporter.address)}
-                          target="_blank"
-                          rel={EXTERNAL_REL}
-                          title={`${reporter.address} on Stellar Expert`}
-                        >
-                          {shortAddress(reporter.address, 8)}
-                        </a>
-                      </td>
-                      <td
-                        className="num"
-                        title={score === null ? "No reputation score available" : undefined}
-                      >
-                        {reputationText(reporter)}
-                      </td>
-                      <td className="num">
-                        {at ? (
-                          <time dateTime={at.iso} title={new Date(at.epoch * 1000).toUTCString()}>
-                            {ago(now - at.epoch)}
-                          </time>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
->>>>>>> pr-174
         </section>
       ))}
     </>

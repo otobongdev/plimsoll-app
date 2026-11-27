@@ -11,10 +11,6 @@ import {
   type CoverageStatus,
   Tier,
 } from "@plimsoll/sdk";
-import { PlimsollMark } from "./PlimsollMark";
-
-export { PlimsollMark };
-
 export async function copyToClipboard(
   value: string,
   clipboard?: Pick<Clipboard, "writeText">,
@@ -158,15 +154,6 @@ const TIER_CLASS: Record<Tier, string> = {
   1: "pill-tier-1",
   2: "pill-tier-2",
   3: "pill-tier-3",
-};
-
-const TIER_TOOLTIP: Record<Tier, string> = {
-  1: "Tier 1 — Transcribed: a third party copied the figure from a public source",
-  2: "Tier 2 — Issuer-signed: the asset issuer attested the reserve directly",
-  3: "Tier 3 — Auditor-signed: an independent auditor verified the reserve",
-  [Tier.AuditorSigned]: "pill-tier-3",
-  [Tier.IssuerSigned]: "pill-tier-2",
-  [Tier.Transcribed]: "pill-tier-1",
 };
 
 const TIER_TOOLTIP: Record<Tier, string> = {
